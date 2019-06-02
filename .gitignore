@@ -10,3 +10,9 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# JetBrains GoLand IDE
+.idea/
+
+# The binary itself
+gorepo
