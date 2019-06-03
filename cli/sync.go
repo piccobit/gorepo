@@ -17,7 +17,6 @@ import (
 
 type SyncCmd struct {
 	SwitchBack bool `kong:"help='Switch specified projects back to the manifest revision.',short='d'"`
-	SyncToGoodBuild bool `kong:"help='Sync to a known good build as specified by the manifest-server element in the current manifest.',short='s'"`
 	Force bool `kong:"help='Proceed with syncing other projects even if a project fails to sync.',short='f'"`
 	Projects []string `kong:"arg,optional,name='1st project',help='List of projects to sync'"`
 }
@@ -30,7 +29,6 @@ func (r *SyncCmd) Run(globals *Globals) error {
 	log.Debug().
 		Strs("Projects",r.Projects).
 		Bool("SwitchBack", r.SwitchBack).
-		Bool("SyncToGoodBuild", r.SyncToGoodBuild).
 		Bool("Force", r.Force).Msg("sync")
 
 	repoDir, err := FindRepoDir()
@@ -89,7 +87,9 @@ func (r *SyncCmd) Run(globals *Globals) error {
 		    if err := cmdClone.Run(); err != nil {
 			    // log.Error().Err(err).Msg("Could not clone project repository")
 
-			    return errors.Wrap(err, "Could not clone project repository")
+			    if !r.Force {
+				    return errors.Wrap(err, "Could not clone project repository")
+			    }
 		    }
 	    } else {
 		    log.Debug().Str("name", project.Name).Msg("sync - project exists, syncing it")
@@ -101,26 +101,46 @@ func (r *SyncCmd) Run(globals *Globals) error {
 		    if err := cmdRemoteUpdate.Run(); err != nil {
 			    // log.Error().Err(err).Msg("Could not update remote")
 
-			    return errors.Wrap(err, "Could not update remote")
+			    if !r.Force {
+				    return errors.Wrap(err, "Could not update remote")
+			    }
 		    }
-
-		    var revision string
 
 		    remote := manifestData.FindRemote(project.Remote)
 
-		    if len(project.Revision) != 0 {
-			    revision = project.Revision
-		    } else if len(remote.Revision) != 0 {
-			    revision = remote.Revision
-		    } else if len(manifestData.Manifest.Default.Revision) != 0 {
-			    revision = manifestData.Manifest.Default.Revision
+		    var revision string
+		    var origin string
+
+		    if r.SwitchBack {
+			    if len(project.Revision) != 0 {
+				    revision = project.Revision
+			    } else if len(remote.Revision) != 0 {
+				    revision = remote.Revision
+			    } else if len(manifestData.Manifest.Default.Revision) != 0 {
+				    revision = manifestData.Manifest.Default.Revision
+			    } else {
+				    log.Debug().Msg("Could not find any revision, therefore using 'master")
+
+				    revision = "master"
+			    }
+
+			    origin = fmt.Sprintf("origin/%s", revision)
+
+			    cmdCheckout := exec.CommandContext(ctx, "git", "checkout", revision)
+			    cmdCheckout.Dir = filepath.Join(repoDir, project.Path)
+			    cmdCheckout.Env = os.Environ()
+
+			    if err := cmdCheckout.Run(); err != nil {
+				    // log.Error().Err(err).Msgf("Could not checkout branch '%s'", revision)
+
+				    if !r.Force {
+					    return errors.Wrapf(err, "Could not checkout branch '%s'", revision)
+				    }
+			    }
+
 		    } else {
-		    	log.Debug().Msg("Could not find any revision, therefore using 'master")
-
-		    	revision = "master"
+		    	origin = "origin"
 		    }
-
-		    origin := fmt.Sprintf("origin/%s", revision)
 
 		    log.Debug().Str("origin", origin).Msg("sync - origin")
 
@@ -131,7 +151,9 @@ func (r *SyncCmd) Run(globals *Globals) error {
 		    if err := cmdRebase.Run(); err != nil {
 			    // log.Error().Err(err).Msg("Could not rebase origin")
 
-			    return errors.Wrap(err, "Could not rebase origin")
+			    if !r.Force {
+				    return errors.Wrap(err, "Could not rebase origin")
+			    }
 		    }
 	    }
     }
