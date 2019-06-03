@@ -33,7 +33,6 @@ func init() {
 		Timestamp().
 		Str("component", "main").
 		Logger()
-
 }
 
 func main() {
@@ -53,7 +52,15 @@ func main() {
 		kong.Vars{
 			"version": "0.1.0",
 		})
+
+	if cli.Debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
 	err := ctx.Run(&cli.Globals)
+
 	ctx.FatalIfErrorf(err)
 }
 
