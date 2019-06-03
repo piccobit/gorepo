@@ -31,7 +31,7 @@ func init() {
 	log = zerolog.New(os.Stderr).
 		With().
 		Timestamp().
-		Str("component", "main").
+		Caller().
 		Logger()
 }
 
