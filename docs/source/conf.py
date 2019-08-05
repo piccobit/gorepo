@@ -59,4 +59,4 @@ html_static_path = ['_static']
 master_doc = 'index'
 
 autoapi_type = 'go'
-autoapi_dirs = ['../../']
+autoapi_dirs = ['../']
