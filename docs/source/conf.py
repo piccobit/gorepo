@@ -28,7 +28,7 @@ author = 'HD Stich'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-  'sphinxcontrib_golangdomain',
+  'sphinxcontrib.golangdomain',
   'autoapi.extension'
 ]
 
